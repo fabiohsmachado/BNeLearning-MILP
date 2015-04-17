@@ -18,7 +18,7 @@ def Error():
  exit(0);
 
 def ScoreFiles(fileList, ess, parentsLimit):
- pathToScorer = "/scorer/unix/scoring"; 
+ pathToScorer = "/lib/unix/scoring"; 
  return [ScoreDatasetFile(pathToScorer, datasetFile, ess, parentsLimit) for datasetFile in fileList if os.path.isfile(datasetFile)];
  
 if __name__ == "__main__":
