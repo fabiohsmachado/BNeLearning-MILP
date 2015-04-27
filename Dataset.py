@@ -5,19 +5,25 @@ from random import shuffle
 
 class Dataset:
  """ Class Dataset """
- def __init__(self, fileName = None):
+ def __init__(self, fileName = None, scoreFileName = None):
   self.data = [];
-  self.variablesQuantity = 0;
   self.variablesCardinality = "";
   self.name = "";
   self.pathToFiles = "";
+  self.parentSets = "";
+  self.parentScores = "";
   if(fileName is not None):
-   self.ParseFile(fileName)
+   self.ParseFile(fileName);
+
+ @property 
+ def variablesQuantity(self):
+  return len(self.variablesCardinality);
   
  def ParseFile(self, fileName):
   self.name = os.path.splitext(os.path.basename(fileName))[0];
   with open(fileName, "r") as datasetFile:
-   self.variablesQuantity = int(datasetFile.readline());
+   # self.variablesQuantity = int(datasetFile.readline());
+   datasetFile.readline();
    self.variablesCardinality = [int(number) for number in datasetFile.readline().strip().split()];
    datasetFile.readline();
    self.data = [[int(number) for number in line.strip().split()] for line in datasetFile];
