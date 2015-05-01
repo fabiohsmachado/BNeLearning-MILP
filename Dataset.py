@@ -3,15 +3,18 @@ import math
 import os
 from random import shuffle
 
+from ScoreSet import ScoreSet
+
 class Dataset:
  """ Class Dataset """
  def __init__(self, fileName = None, scoreFileName = None):
-  self.data = [];
-  self.variablesCardinality = "";
   self.name = "";
   self.pathToFiles = "";
-  self.parentSets = "";
-  self.parentScores = "";
+  self.data = [];
+  self.variablesCardinality = [];
+  self.parentSets = [];
+  self.parentScores = [];
+  self.scoreSet = ScoreSet(scoreFileName);
   if(fileName is not None):
    self.ParseFile(fileName);
 
