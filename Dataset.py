@@ -14,6 +14,8 @@ class Dataset:
   self.variablesCardinality = [];
   self.parentSets = [];
   self.parentScores = [];
+  self.boundedAdjacencyMatrix = [];
+  self.unboundedAdjacencyMatrix = [];
   self.scoreSet = ScoreSet(scoreFileName);
   if(fileName is not None):
    self.ParseFile(fileName);
@@ -35,7 +37,6 @@ class Dataset:
  def CloneWithoutData(self):
   cloneDataset = Dataset();
   cloneDataset.name = self.name;
-  cloneDataset.variablesQuantity = self.variablesQuantity;
   cloneDataset.variablesCardinality = self.variablesCardinality;
   return cloneDataset;
 
@@ -65,3 +66,17 @@ class Dataset:
    datasetFile.write("\n".join(" ".join(map(str, dataLine)) for dataLine in self.data));
    datasetFile.write("\n");
   return datasetFileName;
+
+ def WriteUnboundedAdjacencyMatrixToFile(self, path = "./"):
+  datasetFileName = path + "/" + self.name + ".matrix.unbounded";
+  with open(datasetFileName, "w") as datasetFile:
+   datasetFile.write("\n".join(" ".join(map(str, matrixLine)) for matrixLine in self.unboundedAdjacencyMatrix));
+   datasetFile.write("\n");
+  return datasetFileName;
+
+ def WriteBoundedAdjacencyMatrixToFile(self, path = "./"):
+  datasetFileName = path + "/" + self.name + ".matrix.bounded";
+  with open(datasetFileName, "w") as datasetFile:
+   datasetFile.write("\n".join(" ".join(map(str, matrixLine)) for matrixLine in self.boundedAdjacencyMatrix));
+   datasetFile.write("\n");
+  return datasetFileName;  
