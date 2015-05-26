@@ -1,38 +1,34 @@
 import sys, os
 import cplex
 
-from Dataset import Dataset
+from ScoreSet import ScoreSet
 
-def ComputeMILP(datasetFile, scoreFile, treewidth):
- dataset = Dataset(datasetFile, scoreFile);
+def ComputeMILP(scoreFile, treewidth):
+ print "Learning new structure for socre file " + scoreFile + " and treewidth " + str(treewidth);
+ scoreSet = ScoreSet(scoreFile);
  c = cplex.Cplex();
+ start = c.get_time();
 
 # Preparing Variables
 ## N
- N = dataset.variablesQuantity;
+ N = scoreSet.variablesQuantity;
 ## Uper bounds
 ### (6i)
- zUpperBound = [1] * N;
- vUpperBound = [1] * N;
+ zUpperBound = [N] * N;
+ vUpperBound = [N] * N;
 ### (6j)
  yUpperBound = [[1] * N] * N;
 ### (6k)
- piUpperBound = [[1] * len(parentSet) for parentSet in dataset.scoreSet.parentSets]
+ piUpperBound = [[1] * len(parentSet) for parentSet in scoreSet.parentSets]
 
 ## Lower bounds
-### (6i)
+### (i6)
  zLowerBound = [0] * N;
  vLowerBound = [0] * N;
 ### (6j)
  yLowerBound = [[0] * N] * N;
 ### (6k)
- piLowerBound = [[0] * len(parentSet) for parentSet in dataset.scoreSet.parentSets]
-
-## Names
- piNames = [['pi_' + str(i) + '_' + str(j) for j in range(len(dataset.scoreSet.parentSets[i]))] for i in range(len(dataset.scoreSet.parentSets))];
- yNames = [['y_' + str(i) + '_' + str(j) for j in range(N)] for i in range(N)];
- zNames = ['z_' + str(i) for i in range(N)];
- vNames = ['v_' + str(i) for i in range(N)];
+ piLowerBound = [[0] * len(parentSet) for parentSet in scoreSet.parentSets]
 
 ## Types
  piTypes = [[c.variables.type.integer * len(piVariable)] for piVariable in piUpperBound];
@@ -40,7 +36,13 @@ def ComputeMILP(datasetFile, scoreFile, treewidth):
  vTypes = [c.variables.type.continuous * N];
  zTypes = [c.variables.type.continuous * N];
 
-## Indexes for faster reference later after linearization
+##Names
+ piNames = [['pi_' + str(i) + '_' + str(j) for j in range(len(scoreSet.parentSets[i]))] for i in range(len(scoreSet.parentSets))];
+ yNames = [['y_' + str(i) + '_' + str(j) for j in range(N)] for i in range(N)];
+ zNames = ['z_' + str(i) for i in range(N)];
+ vNames = ['v_' + str(i) for i in range(N)];
+
+## Indexes for reference
  k = 0;
 
  piIndex = []
@@ -68,10 +70,12 @@ def ComputeMILP(datasetFile, scoreFile, treewidth):
   k += 1;
 
 ## Linearization of matrixes
- scoresLinear = sum(dataset.scoreSet.parentScores, []);
+ scoresLinear = sum(scoreSet.parentScores, []);
+ piNamesLinear = sum(piNames, []);
  piUpperBoundLinear = sum(piUpperBound, []);
  piLowerBoundLinear = sum(piLowerBound, []);
  piTypesLinear = sum(piTypes, []);
+ yNamesLinear = sum(yNames, []);
  yUpperBoundLinear = sum(yUpperBound, []);
  yLowerBoundLinear = sum(yLowerBound, []);
  yTypesLinear = sum(yTypes, []);
@@ -80,21 +84,27 @@ def ComputeMILP(datasetFile, scoreFile, treewidth):
  c.set_problem_type(cplex.Cplex.problem_type.MILP);
  c.objective.set_sense(c.objective.sense.maximize);
 
-# Objective function (6a)
- c.variables.add(obj = scoresLinear, ub = piUpperBoundLinear, lb = piLowerBoundLinear, types = piTypesLinear);
+# (6a) - Objective Function
+ c.variables.add(obj = scoresLinear, ub = piUpperBoundLinear, lb = piLowerBoundLinear, types = piTypesLinear, names = piNamesLinear);
 
 # Auxiliary Variables
 ## y
- c.variables.add(ub = yUpperBoundLinear, lb = yLowerBoundLinear, types = yTypesLinear);
+ c.variables.add(ub = yUpperBoundLinear, lb = yLowerBoundLinear, types = yTypesLinear, names = yNamesLinear);
 ## v
- c.variables.add(ub = vUpperBound, lb = vLowerBound, types = vTypes);
+ c.variables.add(ub = vUpperBound, lb = vLowerBound, types = vTypes, names = vNames);
 ## z
- c.variables.add(ub = zUpperBound, lb = zLowerBound, types = zTypes);
+ c.variables.add(ub = zUpperBound, lb = zLowerBound, types = zTypes, names = zNames);
 
 # Constraints
  linearExpressions = [];
  senses = [];
  rightHandSide = [];
+
+## (6b)
+ for i in range(N):
+  linearExpressions.append([[yIndex[i][j] for j in range(N)], [1.0 for j in range(N)]]);
+  senses.append('L');
+  rightHandSide.append(float(treewidth));
 
 ## (6c)
  for i in range(N):
@@ -104,141 +114,113 @@ def ComputeMILP(datasetFile, scoreFile, treewidth):
     senses.append('L');
     rightHandSide.append(N);
 
- for i in range(N):
-   linearExpressions.append([[yIndex[i][i]], [(N + 1)]]);
-   senses.append('L');
-   rightHandSide.append(N);
-
-# ##(6d)
+## (6d)
  for i in range(N):
   for j in range(N):
    for k in range(N):
-    if (i != j and i != k and j != k):
-     linearExpressions.append([[yIndex[i][j], yIndex[i][k], yIndex[j][k], yIndex[k][j]], [1.0, 1.0, -1.0, 1.0]]);
+    if (i != j and i != k and j != k): # and j < k):
+     linearExpressions.append([[yIndex[i][j], yIndex[i][k], yIndex[j][k], yIndex[k][j]], [1.0, 1.0, -1.0, -1.0]]);
      senses.append('L');
-     rightHandSide.append(N);
-
- for i in range(N):
-  for k in range(N):
-   if (i != k):
-    linearExpressions.append([[yIndex[i][i], yIndex[k][i]], [1.0, 1.0]]);
-    senses.append('L');
-    rightHandSide.append(1);
-
- for i in range(N):
-  for j in range(N):
-   if (i != j):
-    linearExpressions.append([[yIndex[i][j], yIndex[i][i], yIndex[j][i]], [2.0, 1.0, -1.0]]);
-    senses.append('L');
-    rightHandSide.append(1);
-
- for i in range(N):
-  for j in range(N):
-    linearExpressions.append([[yIndex[i][j]], [2.0]]);
-    senses.append('L');
-    rightHandSide.append(N);
+     rightHandSide.append(1);
 
 ## (6e)
  for piVariablesIndex in piIndex:
-  linearExpressions.append([piVariablesIndex, [1.0 for i in range(len(piVariablesIndex))]]);
+  linearExpressions.append([piVariablesIndex, [1.0 for _ in range(len(piVariablesIndex))]]);
   senses.append('E');
   rightHandSide.append(1);
 
-# ## (6f)
+## (6f)
  for i in range(N):
-  variableParentSet = dataset.scoreSet.parentSets[i];
+  variableParentSet = scoreSet.parentSets[i];
   for t in range(len(variableParentSet)):
-   for j in range(len(variableParentSet[t])):
-    linearExpressions.append([[piIndex[i][t], vIndex[variableParentSet[t][j]], vIndex[i]], [(N + 1), -1.0, 1.0]]);
+   for j in variableParentSet[t]:
+    linearExpressions.append([[piIndex[i][t], vIndex[j], vIndex[i]], [(N + 1), -1.0, 1.0]]);
     senses.append('L');
     rightHandSide.append(N);
 
 ## (6g)
  for i in range(N):
-  variableParentSets = dataset.scoreSet.parentSets[i];
+  variableParentSets = scoreSet.parentSets[i];
   for t in range(len(variableParentSets)):
-   for j in range(len(variableParentSets[t])):
-    print(i, t, j, variableParentSets[t]);
-   #  linearExpressions.append([[piIndex[i][t], yIndex[i][variableParentSet[t][j]], yIndex[variableParentSet[t][j]][i]], [1.0, -1.0, -1.0]]);
-   #  senses.append('L');
-   #  rightHandSide.append(0);
+   for j in variableParentSets[t]:
+    linearExpressions.append([[piIndex[i][t], yIndex[i][j], yIndex[j][i]], [1.0, -1.0, -1.0]]);
+    senses.append('L');
+    rightHandSide.append(0);
+    
+## (6h)
+ for i in range(N):
+  variableParentSet = scoreSet.parentSets[i];
+  for t in range(len(variableParentSet)):
+   for j in variableParentSet[t]:
+    for k in variableParentSet[t]:
+     if(j != k): # and j < k):
+      linearExpressions.append([[piIndex[i][t] , yIndex[j][k], yIndex[k][j]], [1.0, -1.0, -1.0]]);
+      senses.append('L');
+      rightHandSide.append(0);
 
-# ## (6h)
-#  for i in range(N):
-#   variableParentSet = dataset.scoreSet.parentSets[i];
-#   for t in range(len(variableParentSet)):
-#    for j in range(len(variableParentSet[t])):
-#     for k in range(len(variableParentSet[t])):
-#      if(j != k):
-#       linearExpressions.append([[piIndex[i][t] , yIndex[variableParentSet[t][j]][variableParentSet[t][k]], yIndex[variableParentSet[t][k]][variableParentSet[t][j]]], [1.0, -1.0, -1.0]]);
-#       senses.append('L');
-#       rightHandSide.append(0);
+ outputFileName = os.path.splitext(scoreFile)[0] + ".tw" + str(treewidth);
+ c.set_log_stream(outputFileName + ".cplex.log");
+ c.set_error_stream(outputFileName + ".cplex.error");
+ c.set_warning_stream(outputFileName + ".cplex.warning");
+ c.set_results_stream(outputFileName + ".cplex.resuts");
 
-#  for i in range(N):
-#   variableParentSet = dataset.scoreSet.parentSets[i];
-#   for t in range(len(variableParentSet)):
-#    for j in range(len(variableParentSet[t])):
-#     linearExpressions.append([[piIndex[i][t] , yIndex[variableParentSet[t][j]][variableParentSet[t][j]]], [1.0, -2.0]]);
-#     senses.append('L');
-#     rightHandSide.append(0);
+# Add constrainsts, save the problem and solve
+ c.linear_constraints.add(lin_expr = linearExpressions, senses = senses, rhs = rightHandSide);
+ c.write(outputFileName + "cplex.lp");
+ c.solve();
 
- # c.linear_constraints.add(lin_expr = linearExpressions, senses = senses, rhs = rightHandSide);
- # c.solve();
+# Get results
+ result = c.solution.get_values();
+ resultMatrixPi = [[result[varIndex] for varIndex in piVariable] for piVariable in piIndex];
+ resultMatrixY = [[result[varIndex] for varIndex in yVariable] for yVariable in yIndex];
+ resultListZ = [result[varIndex] for varIndex in zIndex];
+ resultListV = [result[varIndex] for varIndex in vIndex];
+ 
+# Create the adjacency matrix
+ matrix = [];
+ for _ in range(N):
+  matrix.append([0] * N);
 
- # dataset.boundedAdjacencyMatrix = GetAdjacencyMatrix(c, piVariablesIndex, dataset.scoreSet.parentSets);
- # dataset.WriteBoundedAdjacencyMatrixToFile();
- # # print('\n'.join([','.join(['{:4}'.format(int(item)) for item in row]) for row in dataset.boundedAdjacencyMatrix]));
- # print("\n".join(" ".join(map(str, dataLine)) for dataLine in dataset.boundedAdjacencyMatrix));
+ for i in range(N):
+  for j in range(len(resultMatrixPi[i])):
+   if(resultMatrixPi[i][j] == 1):
+    for k in scoreSet.parentSets[i][j]:
+     matrix[k][i] = 1;
 
+# Create result file
+ eliminationOrder = [i[0] for i in sorted(enumerate(resultListZ), key=lambda x:x[1])]
+ finalScore = c.solution.get_objective_value();
+ gap = 0; ####
+ end = c.get_time();
 
-# # New Constraints
-#  linearExpressions = [];
-#  senses = [];
-#  rightHandSide = [];
+# Save results 
+ with open(outputFileName + ".time", "w") as timeFile:
+  timeFile.write("Elapsed time:\n");
+  timeFile.write(str(end - start));
+  timeFile.write("\nElimination order: \n");
+  timeFile.write(str(eliminationOrder));
+  timeFile.write("\nScore of the found network: \n");
+  timeFile.write(str(finalScore) + "\n");
+  timeFile.write("\nError gap to the best solution: \n");
+  timeFile.write(str(gap) + "\n"); 
 
-# ## (6b)
-#  for i in range(N):
-#   linearExpressions.append([[yIndex[i][j] for j in range(N)], [1.0 for i in range(N)]]);
-#   senses.append('L');
-#   rightHandSide.append(float(treewidth));
+ with open(outputFileName + ".matrix", "w") as matrixFile:
+  matrixFile.write("\n".join(" ".join(map(str, map(int, dataLine))) for dataLine in matrix));
+  matrixFile.write("\n");
 
-#  c.linear_constraints.add(lin_expr = linearExpressions, senses = senses, rhs = rightHandSide);
-#  c.solve();
-
-#  dataset.unboundedAdjacencyMatrix = GetAdjacencyMatrix(c, piVariablesIndex, dataset.scoreSet.parentSets);
-#  dataset.WriteUnboundedAdjacencyMatrixToFile();
-#  print('\n'.join([','.join(['{:4}'.format(int(item)) for item in row]) for row in dataset.boundedAdjacencyMatrix]));
-
-def GetAdjacencyMatrix(problem, piVariablesIndex, parentSets):
- result = problem.solution.get_values();
- resultMatrixPi = [[result[piVariablesIndex[i]] for i in range(len(parentSet))] for parentSet in parentSets];
- # resultMatrixY = [[result[yVariablesIndex[i]] for i in range(len(yVariablesIndex))] for yVariablesIndex in yIndex]
- # resultV = [result[vIndex[i]] for i in range(len(vIndex))]
- # resultZ = [result[vIndex[i]] for i in range(len(vIndex))]
-
- print("\n".join(" ".join(map(str, map(int, dataLine))) for dataLine in resultMatrixPi));
- # print('\n'.join([''.join(['{:4}'.format(int(item)) for item in row]) for row in resultMatrixY]));
- # print(resultV);
- # print(resultZ);
-
- matrix = [[0] * len(parentSets)] * len(parentSets);
- for i in range(len(resultMatrixPi)):
-  for t in resultMatrixPi[i]:
-   if resultMatrixPi[i][int(t)] == 1:
-    for j in parentSets[i][int(t)]:
-     matrix[j][i] = 1;
-
- return matrix; 
-
+# End
+ print "Finished learning new structure for socre file " + scoreFile + " and treewidth " + str(treewidth) + " with time " + str(end - start) + ".";
+ return outputFileName + ".matrix";
+ 
 def Error():
- print("Usage:", sys.argv[0], "treewidth", "dataset_file" "score_file");
+ print("Usage:", sys.argv[0], "score_file", "treewidth");
  exit(0);
 
 if __name__ == "__main__":
- # try:
-  if os.path.isfile(sys.argv[1]) and os.path.isfile(sys.argv[2]):
-   ComputeMILP(sys.argv[1], sys.argv[2], sys.argv[3])
+ try:
+  if os.path.isfile(sys.argv[1]):
+   ComputeMILP(sys.argv[1], sys.argv[2])
   else:
    Error();
- # except:
- #  Error();
+ except:
+  Error();

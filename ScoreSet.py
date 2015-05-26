@@ -6,13 +6,14 @@ class ScoreSet:
  def __init__(self, scoreFileName = None):
   self.parentSets = [];
   self.parentScores = [];
+  self.variablesQuantity = 0;
   if(scoreFileName is not None):
    self.ParseScoreFile(scoreFileName);
 
  def ParseScoreFile(self, scoreFileName):
   with open(scoreFileName, "r") as datasetFile:
-   variablesQuantity = int(datasetFile.readline());
-   for _ in range(variablesQuantity):
+   self.variablesQuantity = int(datasetFile.readline());
+   for _ in range(self.variablesQuantity):
     line = datasetFile.readline().strip().split();
     variable = int(line[0]);
     setSize = int(line[1]);
