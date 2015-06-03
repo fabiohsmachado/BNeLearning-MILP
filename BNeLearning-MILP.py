@@ -1,4 +1,4 @@
-import os, sys, time
+import os, sys, time, itertools
 from subprocess import call
 from multiprocessing import Pool
 from multiprocessing import Process
@@ -16,7 +16,7 @@ def Search(scoreFile, treewidth):
 def _Search_Star_(args):
  return Search(args[0], args[1]);
 
-def _Score_Star_((args)):
+def _Score_Star_(args):
  return ScoreFile(args[0], args[1], args[2]);
 
 def LearnDataset(datasetFile, folds, parentsLimit, ess):
@@ -24,7 +24,7 @@ def LearnDataset(datasetFile, folds, parentsLimit, ess):
  start = time.time();
 
  N, trainingFiles = CreateFolds(datasetFile, folds, parentsLimit, ess);
- treewidths = [1000, 3, 4, 5];
+ treewidths = [3, 4, 5];
  tw = 10;
  while N >= tw:
   treewidths.append(tw);
@@ -35,9 +35,9 @@ def LearnDataset(datasetFile, folds, parentsLimit, ess):
  subprocesses.close();
  subprocesses.join();
 
- subprocesses = Pool(folds * len(treewidths) * 6);
- for scoreFile in scoreFiles:
-  subprocesses.map(_Search_Star_, zip([scoreFile] * len(treewidths), treewidths));
+ tasklist = list(itertools.product(scoreFiles, treewidths));
+ subprocesses = Pool(len(tasklist));
+ subprocesses.map(_Search_Star_, tasklist);
  subprocesses.close();
  subprocesses.join();
 
@@ -49,11 +49,11 @@ def BNeLearning_MILP(fileList, folds, parentsLimit, ess):
   LearnDataset(datasetFile, folds, parentsLimit, ess);
 
 def Error():
- print "Usage:", sys.argv[0], "data_files", "number of folds", "ess", "parents_limit", "treewidth";
+ print "Usage:", sys.argv[0], "data_files", "number of folds", "parents_limit", "ess";
  exit(0);
 
 if __name__ == "__main__":
- # try:
-  BNeLearning_MILP(sys.argv[1:-3], int(sys.argv[-3]), float(sys.argv[-2]), int(sys.argv[-1]));
- # except:
- #  Error();
+ try:
+  BNeLearning_MILP(sys.argv[1:-3], int(sys.argv[-3]), int(sys.argv[-2]), float(sys.argv[-1]));
+ except:
+  Error();

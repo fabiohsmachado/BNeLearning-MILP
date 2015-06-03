@@ -14,21 +14,21 @@ def ScoreDatasetFile(pathToScorer, pathToDataset, ess, palim):
  print "Finished scoring with time", end - start, ".";
  return scoreFileName;
 
-def ScoreFile(fileName, ess, parentsLimit):
+def ScoreFile(fileName, parentsLimit, ess):
  pathToScorer = "./lib/unix/scoring"; 
  if(os.path.isfile(fileName)):
   return ScoreDatasetFile(pathToScorer, fileName, ess, parentsLimit);
  else: return -1;
 
-def ScoreFiles(fileList, ess, parentsLimit):
+def ScoreFiles(fileList, parentsLimit, ess):
  return [ScoreFile(datasetFile, ess, parentsLimit) for datasetFile in fileList];
 
 def Error():
- print("Usage:", sys.argv[0], "data_files", "ess", "parents_limit");
+ print("Usage:", sys.argv[0], "data_files", "parents_limit", "ess");
  exit(0);
  
 if __name__ == "__main__":
  try:
-  print(ScoreFiles(sys.argv[1:], int(sys.argv[-2]), int(sys.argv[-1])));
+  print(ScoreFiles(sys.argv[1:], int(sys.argv[-2]), float(sys.argv[-1])));
  except:
   Error();

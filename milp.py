@@ -162,11 +162,14 @@ def ComputeMILP(scoreFile, treewidth):
  c.set_log_stream(outputFileName + ".cplex.log");
  c.set_error_stream(outputFileName + ".cplex.error");
  c.set_warning_stream(outputFileName + ".cplex.warning");
- c.set_results_stream(outputFileName + ".cplex.resuts");
+ c.set_results_stream(outputFileName + ".cplex.results");
 
 # Add constrainsts, save the problem and solve
  c.linear_constraints.add(lin_expr = linearExpressions, senses = senses, rhs = rightHandSide);
  c.write(outputFileName + "cplex.lp");
+
+ c.parameters.clocktype = 1;
+ c.parameters.timelimit = 7200;
  c.solve();
 
 # Get results
@@ -200,9 +203,9 @@ def ComputeMILP(scoreFile, treewidth):
   timeFile.write("\nElimination order: \n");
   timeFile.write(str(eliminationOrder));
   timeFile.write("\nScore of the found network: \n");
-  timeFile.write(str(finalScore) + "\n");
+  timeFile.write(str(finalScore));
   timeFile.write("\nError gap to the best solution: \n");
-  timeFile.write(str(gap) + "\n"); 
+  timeFile.write(str(gap)); 
 
  with open(outputFileName + ".matrix", "w") as matrixFile:
   matrixFile.write("\n".join(" ".join(map(str, map(int, dataLine))) for dataLine in matrix));
