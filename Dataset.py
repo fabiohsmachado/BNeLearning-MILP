@@ -27,7 +27,6 @@ class Dataset:
  def ParseFile(self, fileName):
   self.name = os.path.splitext(os.path.basename(fileName))[0];
   with open(fileName, "r") as datasetFile:
-   # self.variablesQuantity = int(datasetFile.readline());
    datasetFile.readline();
    self.variablesCardinality = [int(number) for number in datasetFile.readline().strip().split()];
    datasetFile.readline();

@@ -1,21 +1,21 @@
 #!/bin/python
 #Read a list of datasets and score their variables using Gobnilp's scorer
-import sys, os, time
+import sys, os
 from subprocess import call
 
 def ScoreDatasetFile(pathToScorer, pathToDataset, ess, palim):
  print "Scoring the dataset", pathToDataset ;
- start = time.clock();
+
  scoreFileName = os.path.splitext(pathToDataset)[0] + ".scores";
  scoreCommand = [pathToScorer, pathToDataset, str(ess), str(palim)];
  with open(scoreFileName, "w") as scoreFile:
   call(scoreCommand, stdout = scoreFile, shell = False);
- end = time.clock();
- print "Finished scoring with time", end - start, ".";
+
+ print "Finished scoring file", scoreFileName, ".";
  return scoreFileName;
 
 def ScoreFile(fileName, parentsLimit, ess):
- pathToScorer = "./lib/unix/scoring"; 
+ pathToScorer = "./lib/unix-cluster/scoring"; 
  if(os.path.isfile(fileName)):
   return ScoreDatasetFile(pathToScorer, fileName, ess, parentsLimit);
  else: return -1;

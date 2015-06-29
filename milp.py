@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, time
 import cplex
 
 from ScoreSet import ScoreSet
@@ -7,9 +7,15 @@ def ComputeMILP(scoreFile, treewidth):
  print "Learning new structure for socre file " + scoreFile + " and treewidth " + str(treewidth);
  scoreSet = ScoreSet(scoreFile);
  c = cplex.Cplex();
+
+#### Configuration Variables ####
+ c.parameters.clocktype.set(1);     # 1 if measure in CPU time; 0 if measure in wall time.
+ c.parameters.timelimit.set(7200); # Time in seconds untilp stop the MILP. 0 to run until the bes solution is found.
+ c.parameters.threads.set(3);       # Number of cores to operate during the whole operation.
+# Preparing Variables
+
  start = c.get_time();
 
-# Preparing Variables
 ## N
  N = scoreSet.variablesQuantity;
 ## Uper bounds
@@ -62,8 +68,8 @@ def ComputeMILP(scoreFile, treewidth):
  vIndex = [0] * N;
  for i in range(N):
   vIndex[i] = k;
-  k += 1;
-
+  k += 1; 
+ 
  zIndex = [0] * N;
  for i in range(N):
   zIndex[i] = k;
@@ -146,7 +152,7 @@ def ComputeMILP(scoreFile, treewidth):
     linearExpressions.append([[piIndex[i][t], yIndex[i][j], yIndex[j][i]], [1.0, -1.0, -1.0]]);
     senses.append('L');
     rightHandSide.append(0);
-    
+   
 ## (6h)
  for i in range(N):
   variableParentSet = scoreSet.parentSets[i];
@@ -166,10 +172,8 @@ def ComputeMILP(scoreFile, treewidth):
 
 # Add constrainsts, save the problem and solve
  c.linear_constraints.add(lin_expr = linearExpressions, senses = senses, rhs = rightHandSide);
- c.write(outputFileName + "cplex.lp");
+ c.write(outputFileName + ".cplex.lp");
 
- c.parameters.clocktype = 1;
- c.parameters.timelimit = 7200;
  c.solve();
 
 # Get results
@@ -178,7 +182,7 @@ def ComputeMILP(scoreFile, treewidth):
  resultMatrixY = [[result[varIndex] for varIndex in yVariable] for yVariable in yIndex];
  resultListZ = [result[varIndex] for varIndex in zIndex];
  resultListV = [result[varIndex] for varIndex in vIndex];
- 
+
 # Create the adjacency matrix
  matrix = [];
  for _ in range(N):
@@ -193,7 +197,7 @@ def ComputeMILP(scoreFile, treewidth):
 # Create result file
  eliminationOrder = [i[0] for i in sorted(enumerate(resultListZ), key=lambda x:x[1])]
  finalScore = c.solution.get_objective_value();
- gap = 0; ####
+ gap = c.solution.MIP.get_mip_relative_gap();
  end = c.get_time();
 
 # Save results 
@@ -205,14 +209,14 @@ def ComputeMILP(scoreFile, treewidth):
   timeFile.write("\nScore of the found network: \n");
   timeFile.write(str(finalScore));
   timeFile.write("\nError gap to the best solution: \n");
-  timeFile.write(str(gap)); 
+  timeFile.write(str(gap) + "\n");
 
  with open(outputFileName + ".matrix", "w") as matrixFile:
   matrixFile.write("\n".join(" ".join(map(str, map(int, dataLine))) for dataLine in matrix));
   matrixFile.write("\n");
 
 # End
- print "Finished learning new structure for socre file " + scoreFile + " and treewidth " + str(treewidth) + " with time " + str(end - start) + ".";
+ print "Finished learning new structure for score file " + scoreFile + " and treewidth " + str(treewidth) + " with time " + str(end - start) + ".";
  return outputFileName + ".matrix";
  
 def Error():

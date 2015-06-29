@@ -12,16 +12,20 @@ def CreateDatasetDirectory(datasetParentDirectory, dataset):
  dataset.pathToFiles = datasetParentDirectory;
  return pathToDataset;
 
-def Parse(dataset, folds, parents, ess):
+def Parse(dataset, folds, parents, ess, root_directory = None):
  print "Parsing dataset:", dataset.name, "into", folds, "folds.";
- datasetPath = CreateDatasetDirectory("datasetFolds_" + str(parents) + "_" + str(ess), dataset);
+ datasetDirectory = "datasetFolds_" + str(parents) + "_" + str(ess);
+ if not root_directory:
+  datasetDirectory = root + datasetDirectory
+
+ datasetPath = CreateDatasetDirectory(datasetDirectory, dataset);
  trainingFiles = [];
  validationFiles = [];
  for training, validation in dataset.KFoldGenerator(folds):
   trainingFiles.append(training.WriteToFile(datasetPath));
   validationFiles.append(validation.WriteToFile(datasetPath));
  print "Finished parsing.";
- return dataset.variablesQuantity, trainingFiles;
+ return datasetPath, dataset.variablesQuantity, trainingFiles;
 
 def CreateFolds(datasetFile, folds, parents, ess):
  if os.path.isfile(datasetFile):
