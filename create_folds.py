@@ -12,36 +12,34 @@ def CreateDatasetDirectory(datasetParentDirectory, dataset):
  dataset.pathToFiles = datasetParentDirectory;
  return pathToDataset;
 
-def Parse(dataset, folds, parents, ess, root_directory = None):
+def Parse(dataset, folds):
  print "Parsing dataset:", dataset.name, "into", folds, "folds.";
- datasetDirectory = "datasetFolds_" + str(parents) + "_" + str(ess);
- if not root_directory:
-  datasetDirectory = root + datasetDirectory
+ datasetDirectory = "dataset_folds";
 
  datasetPath = CreateDatasetDirectory(datasetDirectory, dataset);
  trainingFiles = [];
  validationFiles = [];
- for training, validation in dataset.KFoldGenerator(folds):
+ for training, validation in dataset.KFoldGenerator(folds, False):
   trainingFiles.append(training.WriteToFile(datasetPath));
   validationFiles.append(validation.WriteToFile(datasetPath));
  print "Finished parsing.";
  return datasetPath, dataset.variablesQuantity, trainingFiles;
 
-def CreateFolds(datasetFile, folds, parents, ess):
+def CreateFolds(datasetFile, folds):
  if os.path.isfile(datasetFile):
-  return Parse(Dataset(datasetFile), folds, parents, ess);
+  return Parse(Dataset(datasetFile), folds);
  else:
   return "Ivalid dataset file: " + datasetFile;
 
-def CreateFoldsForMultipleDatasets(fileList, folds, parents, ess):
- return [CreateFolds(datasetFile, folds, parents, ess) for datasetFile in fileList]
+def CreateFoldsForMultipleDatasets(fileList, folds):
+ return [CreateFolds(datasetFile, folds) for datasetFile in fileList]
 
 def Error():
- print("Usage:", sys.argv[0], "data_filename", "number_of_folds");
+ print "Usage:", sys.argv[0], "data_filenames", "number_of_folds";
  exit(0);
 
 if __name__ == "__main__":
- # try:
-  print(CreateFoldsForMultipleDatasets(sys.argv[1:-1], int(sys.argv[-1])));
- # except:
- #  Error();
+ try:
+  CreateFoldsForMultipleDatasets(sys.argv[1:-1], int(sys.argv[-1]));
+ except:
+  Error();
