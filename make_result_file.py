@@ -2,6 +2,9 @@ import sys, os
 
 def SaveResult(timeFileName, resultFile):
  nameList = os.path.basename(timeFileName).split('.');
+ parentDirectoryList = timeFileName.split('/')[-3].split('_');
+ ess = parentDirectoryList[-1];
+ parentsLimit = parentDirectoryList[-2];
  datasetName = nameList[-5];
  fold = nameList[-4];
  treewidth = nameList[-2][2:];
@@ -17,11 +20,11 @@ def SaveResult(timeFileName, resultFile):
   gap = timeFile.readline()[:-1];
   timeFile.readline();
   likelihood = timeFile.readline()[:-1];
-  resultFile.write(datasetName + ',' + fold + ',' + treewidth + ',' + time + ',' + score + ',' + gap + ',' + likelihood + '\n');
+  resultFile.write(datasetName + ',' + parentsLimit + ',' + ess + ',' + fold + ',' + treewidth + ',' + time + ',' + score + ',' + gap + ',' + likelihood + '\n');
 
 def MakeResultFile(fileList):
  with open("BNeLearning.csv", 'w') as resultFile:
-  resultFile.write("Dataset,Fold,Treewidth,Time,Score,Gap,Likelihood\n")
+  resultFile.write("Dataset,ParentsLimit,ess,Fold,Treewidth,Time,Score,Gap,Likelihood\n")
   for timeFileName in fileList:
    SaveResult(timeFileName, resultFile);
 

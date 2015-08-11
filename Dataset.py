@@ -59,10 +59,11 @@ class Dataset:
  def WriteToFile(self, path = "./"):
   datasetFileName = path + "/" + self.name + ".data";
   with open(datasetFileName, "w") as datasetFile:
-   datasetFile.write(str(self.variablesQuantity) + "\n");
-   datasetFile.write(" ".join(map(str, self.variablesCardinality)) + "\n");
-   datasetFile.write(str(len(self.data)) + "\n");
-   datasetFile.write("\n".join(" ".join(map(str, dataLine)) for dataLine in self.data));
+   # datasetFile.write(str(self.variablesQuantity) + "\n");
+   # datasetFile.write(" ".join(map(str, self.variablesCardinality)) + "\n");
+   # datasetFile.write(str(len(self.data)) + "\n");
+   # datasetFile.write("\n".join(" ".join(map(str, dataLine)) for dataLine in self.data));
+   datasetFile.write("\n".join(",".join(map(str, dataLine)) for dataLine in self.data));
    datasetFile.write("\n");
   return datasetFileName;
 
